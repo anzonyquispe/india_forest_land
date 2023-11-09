@@ -1,0 +1,429 @@
+
+R version 4.3.1 (2023-06-16) -- "Beagle Scouts"
+Copyright (C) 2023 The R Foundation for Statistical Computing
+Platform: x86_64-redhat-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> 
+> #-------------------------------------------------------------------------------
+> 
+> rm( list = ls() )
+> library(did)
+> library(augsynth)
+> library(data.table)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+> library(fixest)
+> library(ggplot2)
+> 
+> 
+> # Getting the workign directory 
+> shell_root <- "/scratch/gpfs/ar8787/groupdata2/india_forest_land" 
+> dbox_root <- "~/Dropbox/india_forest_land" 
+> root <- shell_root
+> setwd( root )
+> 
+> ### Geting State names
+> state_names <- fread( "A_MicroData/state_names_shrug.csv" )
+> state_id_code <- 18
+> st_name <- state_names[ state_names$state_id == state_id_code ]$state_name
+> 
+> 
+> # Getting the num of files
+> df1 <- fread("A_MicroData/data_sysdif.csv")
+> 
+> # Add a new column 'is_duplicate' which is TRUE for duplicated rows based on 'vill_id' and 'year'
+> df1[, is_duplicate := duplicated(.SD) | duplicated(.SD, fromLast = TRUE), .SDcols = c('vill_id', 'year')]
+> df1[ df1$is_duplicate == 0 ]
+          vill_id tr_ror_data_entry tr_ror_aadhaar_link
+       1:       1                 0                   0
+       2:       2                 0                   0
+       3:       3                 0                   0
+       4:       4                 0                   0
+       5:       5                 0                   0
+      ---                                              
+14246074:  647549                 1                   0
+14246075:  647549                 1                   0
+14246076:  647549                 1                   0
+14246077:  647549                 1                   0
+14246078:  647549                 1                   0
+          tr_ror_dist_softw_available tr_mutation_computerized
+       1:                           0                        0
+       2:                           0                        0
+       3:                           0                        0
+       4:                           0                        0
+       5:                           0                        0
+      ---                                                     
+14246074:                           1                        1
+14246075:                           1                        1
+14246076:                           1                        1
+14246077:                           1                        1
+14246078:                           1                        1
+          tr_digital_ror_issued ps_ror_data_entry ps_ror_aadhaar_link
+       1:                     0         0.6395435          0.05349476
+       2:                     0         0.6395435          0.05349476
+       3:                     0         0.6395435          0.05349476
+       4:                     0         0.6395435          0.05349476
+       5:                     0         0.7815149          0.08623272
+      ---                                                            
+14246074:                     1         0.6395435          0.05349476
+14246075:                     1         0.6395435          0.05349476
+14246076:                     1         0.6395435          0.05349476
+14246077:                     1         0.6395435          0.05349476
+14246078:                     1         0.6395435          0.05349476
+          ps_mutation_computerized ps_digital_ror_issued
+       1:                0.4533156             0.3182506
+       2:                0.4533156             0.3182506
+       3:                0.4533156             0.3182506
+       4:                0.4533156             0.3182506
+       5:                0.7208555             0.4261910
+      ---                                               
+14246074:                0.4533156             0.3182506
+14246075:                0.4533156             0.3182506
+14246076:                0.4533156             0.3182506
+14246077:                0.4533156             0.3182506
+14246078:                0.4533156             0.3182506
+          ps_ror_dist_softw_available               shrid pc11_state_id
+       1:                   0.6695185 01-001-00001-000001             1
+       2:                   0.6695185 01-001-00001-000002             1
+       3:                   0.6695185 01-001-00001-000003             1
+       4:                   0.6695185 01-001-00001-000004             1
+       5:                   0.8637478 01-001-00001-000005             1
+      ---                                                              
+14246074:                   0.6695185 35-640-05924-645570            35
+14246075:                   0.6695185 35-640-05924-645570            35
+14246076:                   0.6695185 35-640-05924-645570            35
+14246077:                   0.6695185 35-640-05924-645570            35
+14246078:                   0.6695185 35-640-05924-645570            35
+          pc11_tv_id year ev_ror_data_entry ev_ror_aadhaar_link
+       1:          1 2000                NA                  NA
+       2:          2 2000                NA                  NA
+       3:          3 2000                NA                  NA
+       4:          4 2000                NA                  NA
+       5:          5 2000                NA                  NA
+      ---                                                      
+14246074:     645570 2017              2016                  NA
+14246075:     645570 2018              2016                  NA
+14246076:     645570 2019              2016                  NA
+14246077:     645570 2020              2016                  NA
+14246078:     645570 2021              2016                  NA
+          ev_ror_dist_softw_available ev_mutation_computerized
+       1:                          NA                       NA
+       2:                          NA                       NA
+       3:                          NA                       NA
+       4:                          NA                       NA
+       5:                          NA                       NA
+      ---                                                     
+14246074:                        2016                     2016
+14246075:                        2016                     2016
+14246076:                        2016                     2016
+14246077:                        2016                     2016
+14246078:                        2016                     2016
+          ev_digital_ror_issued t2ev_ror_data_entry t2ev_ror_aadhaar_link
+       1:                    NA                  NA                    NA
+       2:                    NA                  NA                    NA
+       3:                    NA                  NA                    NA
+       4:                    NA                  NA                    NA
+       5:                    NA                  NA                    NA
+      ---                                                                
+14246074:                  2016                   1                    NA
+14246075:                  2016                   2                    NA
+14246076:                  2016                   3                    NA
+14246077:                  2016                   4                    NA
+14246078:                  2016                   5                    NA
+          t2ev_ror_dist_softw_available t2ev_mutation_computerized
+       1:                            NA                         NA
+       2:                            NA                         NA
+       3:                            NA                         NA
+       4:                            NA                         NA
+       5:                            NA                         NA
+      ---                                                         
+14246074:                             1                          1
+14246075:                             2                          2
+14246076:                             3                          3
+14246077:                             4                          4
+14246078:                             5                          5
+          t2ev_digital_ror_issued post_ror_data_entry post_ror_aadhaar_link
+       1:                      NA                   0                     0
+       2:                      NA                   0                     0
+       3:                      NA                   0                     0
+       4:                      NA                   0                     0
+       5:                      NA                   0                     0
+      ---                                                                  
+14246074:                       1                   1                     0
+14246075:                       2                   1                     0
+14246076:                       3                   1                     0
+14246077:                       4                   1                     0
+14246078:                       5                   1                     0
+          post_ror_dist_softw_available post_mutation_computerized
+       1:                             0                          0
+       2:                             0                          0
+       3:                             0                          0
+       4:                             0                          0
+       5:                             0                          0
+      ---                                                         
+14246074:                             1                          1
+14246075:                             1                          1
+14246076:                             1                          1
+14246077:                             1                          1
+14246078:                             1                          1
+          post_digital_ror_issued treecover greencover     built per_treecover
+       1:                       0   1321370   539216.3  875179.4      48.29982
+       2:                       0   1040387  2749960.3 1310758.0      20.39533
+       3:                       0   1674242   810929.0  705458.3      52.47372
+       4:                       0   1324112   948033.8  710522.1      44.39355
+       5:                       0   1047631  2658660.5  571123.9      24.49216
+      ---                                                                     
+14246074:                       1  12388140  7912851.5  778601.3      58.76840
+14246075:                       1  14657235  5633254.0  789104.0      69.53281
+14246076:                       1  14301773  6266075.0  511745.2      67.84654
+14246077:                       1  14742604  5116985.5 1220003.5      69.93780
+14246078:                       1  13964614  5630618.0 1484361.1      66.24708
+          per_greencover per_built is_duplicate
+       1:       19.70989 31.990294        FALSE
+       2:       53.90910 25.695568        FALSE
+       3:       25.41596 22.110317        FALSE
+       4:       31.78476 23.821693        FALSE
+       5:       62.15577 13.352079        FALSE
+      ---                                      
+14246074:       37.53797  3.693626        FALSE
+14246075:       26.72373  3.743450        FALSE
+14246076:       29.72579  2.427681        FALSE
+14246077:       24.27459  5.787605        FALSE
+14246078:       26.71123  7.041697        FALSE
+> 
+> 
+> # Get year of treatment
+> # Get the minimum year where ps_ror_data_entry equals 1 for each vill_id
+> min_yr_tr <- df1[post_ror_data_entry == 1, .(min_year = min(year)), by = .(vill_id)]
+> # Merge with the original data.table by vill_id
+> df1 <- merge(df1, min_yr_tr, by = "vill_id", all.x = TRUE)
+> df1[is.na(min_year), min_year := 0]
+> 
+> df1 <- df1[df1$pc11_state_id == state_id_code ]
+> df_year_2010 <- df1[df1$year == 2010]
+> 
+> 
+> # Calculate the median of the 'value' column
+> median_value <- median(df_year_2010$per_treecover)
+> # Generate a new variable 'above_median'; it will be TRUE if 'value' is greater than the median
+> df_year_2010[, above_median_all := (per_treecover > median_value)*1 ]
+> df_year_2010 <- df_year_2010[, .(shrid, above_median_all )]
+> 
+> df2 <- df1 %>% left_join( df_year_2010 )
+Joining with `by = join_by(shrid)`
+> df2_above <- df2[df2$above_median_all == 1]
+> df2_below <- df2[df2$above_median_all == 0]
+> 
+> #-------------------------------------------------------------------------------
+> 
+> 
+> 
+> #-------------------------------------------------------------------------------
+> # above the median
+> #-------------------------------------------------------------------------------
+> 
+> # Start estimation
+> out <- att_gt(yname = "per_treecover",
++               gname = "min_year",
++               idname = "vill_id",
++               tname = "year",
++               xformla = ~ 1 ,
++               data = df2_above,
++               est_method = "reg", 
++               control_group=c( "notyettreated" )
++ )
+Warning messages:
+1: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
+  Be aware that there are some small groups in your dataset.
+  Check groups: 2012.
+2: In att_gt(yname = "per_treecover", gname = "min_year", idname = "vill_id",  :
+  Not returning pre-test Wald statistic due to singular covariance matrix
+> 
+> filename <- paste0( "above_median_", state_id_code, ".RDS")
+> path <- file.path("E_Estimates/_vcf_10_callaway_santanna_analysis/median_filter/by_state", 
++                   filename)
+> saveRDS( out, path )
+> 
+> 
+> # aggregate the group-time average treatment effects
+> dynamic_sum <- aggte( out, type = "dynamic")
+> res <- ggdid(dynamic_sum)
+> data_sum <- res$data
+> data_sum$ymin=(data_sum$att-data_sum$c*data_sum$att.se)
+> data_sum$ymax = ( data_sum$att + data_sum$c * data_sum$att.se )
+> est_df <- data.table( data_sum )
+> 
+> # Vectors of old and new column names
+> oldnames <- c( "year", "att", "ymax", "ymin" )
+> newnames <- c( "Time", "Estimate", 'upper_bound', 'lower_bound' )
+> setnames(est_df, oldnames, newnames)
+> 
+> # Getting the number of obseravtions
+> n_df <- df2_above[t2ev_ror_data_entry %in% est_df$Time][, .N, by = t2ev_ror_data_entry]
+> n_df$Time <- n_df$t2ev_ror_data_entry
+> setorder(n_df,Time )
+> setorder(est_df,Time )
+> 
+> 
+> # Getting factors
+> rect.length <- (max(est_df[,"Estimate"], na.rm = TRUE) - 
++                   min(est_df[,"Estimate"], na.rm = TRUE))/2
+> scale_fac <- 0.8 * rect.length / ( max(n_df[,"N"]) )
+> min_y_lim <- round(min(est_df$lower_bound), 2) * 1.05
+> max_y_lim <- round( max(est_df$upper_bound), 2) * 0.95
+> 
+> est_df[,"xmin"] <- est_df[,"Time"] - 0.2
+> est_df[,"xmax"] <- est_df[,"Time"] + 0.2
+> est_df[,"ymin"] <- min_y_lim
+> est_df[,"ymax"] <- est_df[,"ymin"] + ( n_df[,"N"] * scale_fac )
+> 
+> 
+> # Getting the plot
+> p <- ggplot(est_df, aes(x = Time, y = Estimate)) + 
++   geom_line(color = "blue") +
++   geom_point(color = "red") +
++   geom_errorbar(aes(ymin = lower_bound, ymax = upper_bound), 
++                 width = 0.2, color = "red") +
++   geom_rect(data = est_df, aes(xmin = xmin, xmax = xmax, ymin = ymin, 
++                                ymax = ymax), 
++             fill = "grey70", colour = "grey69", alpha = 0.4, size = 0.2) + 
++   coord_cartesian(ylim = c( min_y_lim, max_y_lim ) ) +
++   scale_y_continuous(name = "Estimate", 
++                      sec.axis = sec_axis(~(.+ (-1*min_y_lim)) * (1/scale_fac), 
++                                          name = "Number of Observations")) + 
++   labs(y = "ATT", x = "Time to First Year of Treatment", 
++        title = "Ror Data Entry at Level") + 
++   geom_vline(aes(xintercept = 0), linetype = "dashed", color = "gray") +
++   geom_hline(aes(yintercept = 0), linetype = "dashed", color = "gray") + 
++   ggtitle( paste0( st_name, " Non yet Treated" ) ) +
++   theme_minimal()
+Warning message:
+Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead. 
+> 
+> filename <- paste0( "above_median_", state_id_code, "_plot.png")
+> path <- file.path("F_Figures/_vcf_10_callaway_santanna_analysis/median_filter/by_state", 
++                   filename)
+> ggsave(filename = path, plot = p, width = 6, height = 4, dpi = 300)
+> 
+> #-------------------------------------------------------------------------------
+> 
+> 
+> 
+> 
+> 
+> #-------------------------------------------------------------------------------
+> # below the median
+> #-------------------------------------------------------------------------------
+> 
+> # Start estimation
+> out <- att_gt(yname = "per_treecover",
++               gname = "min_year",
++               idname = "vill_id",
++               tname = "year",
++               xformla = ~ 1 ,
++               data = df2_below,
++               est_method = "reg", 
++               control_group=c( "notyettreated" )
++               
++ )
+> 
+> filename <- paste0( "below_median_", state_id_code, ".RDS")
+> path <- file.path("E_Estimates/_vcf_10_callaway_santanna_analysis/median_filter/by_state", 
++                   filename)
+> saveRDS( out, path )
+> 
+> 
+> # aggregate the group-time average treatment effects
+> dynamic_sum <- aggte( out, type = "dynamic")
+> res <- ggdid(dynamic_sum)
+> data_sum <- res$data
+> data_sum$ymin=(data_sum$att-data_sum$c*data_sum$att.se)
+> data_sum$ymax = ( data_sum$att + data_sum$c * data_sum$att.se )
+> est_df <- data.table( data_sum )
+> 
+> # Vectors of old and new column names
+> oldnames <- c( "year", "att", "ymax", "ymin" )
+> newnames <- c( "Time", "Estimate", 'upper_bound', 'lower_bound' )
+> setnames(est_df, oldnames, newnames)
+> 
+> # Getting the number of obseravtions
+> n_df <- df2_below[t2ev_ror_data_entry %in% est_df$Time][, .N, by = t2ev_ror_data_entry]
+> n_df$Time <- n_df$t2ev_ror_data_entry
+> setorder(n_df,Time )
+> setorder(est_df,Time )
+> 
+> 
+> # Getting factors
+> rect.length <- (max(est_df[,"Estimate"], na.rm = TRUE) - 
++                   min(est_df[,"Estimate"], na.rm = TRUE))/2
+> scale_fac <- 0.8 * rect.length / ( max(n_df[,"N"]) )
+> min_y_lim <- round(min(est_df$lower_bound), 2) * 1.05
+> max_y_lim <- round( max(est_df$upper_bound), 2) * 0.95
+> 
+> est_df[,"xmin"] <- est_df[,"Time"] - 0.2
+> est_df[,"xmax"] <- est_df[,"Time"] + 0.2
+> est_df[,"ymin"] <- min_y_lim
+> est_df[,"ymax"] <- est_df[,"ymin"] + ( n_df[,"N"] * scale_fac )
+> 
+> 
+> # Getting the plot
+> p <- ggplot(est_df, aes(x = Time, y = Estimate)) + 
++   geom_line(color = "blue") +
++   geom_point(color = "red") +
++   geom_errorbar(aes(ymin = lower_bound, ymax = upper_bound), 
++                 width = 0.2, color = "red") +
++   geom_rect(data = est_df, aes(xmin = xmin, xmax = xmax, ymin = ymin, 
++                                ymax = ymax), 
++             fill = "grey70", colour = "grey69", alpha = 0.4, size = 0.2) + 
++   coord_cartesian(ylim = c( min_y_lim, max_y_lim ) ) +
++   scale_y_continuous(name = "Estimate", 
++                      sec.axis = sec_axis(~(.+ (-1*min_y_lim)) * (1/scale_fac), 
++                                          name = "Number of Observations")) + 
++   labs(y = "ATT", x = "Time to First Year of Treatment", 
++        title = "Ror Data Entry at Level") + 
++   geom_vline(aes(xintercept = 0), linetype = "dashed", color = "gray") +
++   geom_hline(aes(yintercept = 0), linetype = "dashed", color = "gray") + 
++   ggtitle( paste0( st_name, " Non yet Treated" ) ) +
++   theme_minimal()
+> 
+> filename <- paste0( "below_median_", state_id_code, "_plot.png")
+> path <- file.path("F_Figures/_vcf_10_callaway_santanna_analysis/median_filter/by_state", 
++                   filename)
+> ggsave(filename = path, plot = p, width = 6, height = 4, dpi = 300)
+> 
+> #-------------------------------------------------------------------------------
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 57.211   5.285  63.206 

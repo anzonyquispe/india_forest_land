@@ -1,0 +1,71 @@
+
+R version 4.3.1 (2023-06-16) -- "Beagle Scouts"
+Copyright (C) 2023 The R Foundation for Statistical Computing
+Platform: x86_64-redhat-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(did)
+> library(data.table)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+> library(boot)
+> library(ssynthdid)
+> library( tidyr )
+> library(Matrix)
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+> 
+> 
+> setwd("/scratch/gpfs/ar8787/groupdata2/india_forest_land")
+> 
+> 
+> # # Load estimation
+> espec1 <- readRDS( 'E_Estimates/_vcf_10_callaway_santanna_analysis/output_1.RDS')
+> espec1_plot <- aggte(espec1, type = "dynamic")
+> saveRDS(espec1_plot, 'E_Estimates/_vcf_10_callaway_santanna_analysis/output_1.RDS' )
+> 
+> # Load estimation
+> espec2 <- readRDS( 'E_Estimates/_vcf_10_callaway_santanna_analysis/2_espec_cs.RDS')
+> espec2_plot <- aggte(espec2, type = "dynamic")
+> saveRDS(espec2_plot, 'E_Estimates/_vcf_10_callaway_santanna_analysis/2_espec_cs_ag.RDS' )
+> 
+> # Load estimation
+> espec3 <- readRDS( 'E_Estimates/_vcf_10_callaway_santanna_analysis/3_espec_cs.RDS')
+> espec3_plot <- aggte(espec3, type = "dynamic")
+> saveRDS(espec3_plot, 'E_Estimates/_vcf_10_callaway_santanna_analysis/3_espec_cs_ag.RDS' )
+> 
+> # # Load estimation
+> espec4 <- readRDS( 'E_Estimates/_vcf_10_callaway_santanna_analysis/4_espec_cs.RDS')
+> espec4_plot <- aggte(espec4, type = "dynamic")

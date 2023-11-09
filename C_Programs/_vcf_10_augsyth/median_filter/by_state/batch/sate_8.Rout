@@ -1,0 +1,92 @@
+
+R version 4.3.1 (2023-06-16) -- "Beagle Scouts"
+Copyright (C) 2023 The R Foundation for Statistical Computing
+Platform: x86_64-redhat-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library(augsynth)
+> library(data.table)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+> library(fixest)
+> library(ggplot2)
+> 
+> 
+> # Getting the workign directory 
+> shell_root <- "/scratch/gpfs/ar8787/groupdata2/india_forest_land" 
+> dbox_root <- "~/Dropbox/india_forest_land" 
+> root <- shell_root
+> setwd( root )
+> 
+> ### Geting State names
+> state_names <- fread( "A_MicroData/state_names_shrug.csv" )
+> state_id_code <- 7
+> st_name <- state_names[ state_names$state_id == state_id_code ]$state_name
+> 
+> 
+> # Getting the num of files
+> df1 <- fread("A_MicroData/data_sysdif.csv")
+> df1 <- df1[df1$pc11_state_id == state_id_code ]
+> df_year_2010 <- df1[df1$year == 2010]
+> 
+> 
+> # Calculate the median of the 'value' column
+> median_value <- median(df_year_2010$per_treecover)
+> # Generate a new variable 'above_median'; it will be TRUE if 'value' is greater than the median
+> df_year_2010[, above_median_all := (per_treecover > median_value)*1 ]
+> df_year_2010 <- df_year_2010[, .(shrid, above_median_all )]
+> 
+> df2 <- df1 %>% left_join( df_year_2010 )
+Joining with `by = join_by(shrid)`
+> df2_above <- df2[df2$above_median_all == 1]
+> df2_below <- df2[df2$above_median_all == 0]
+> 
+> 
+> 
+> #-------------------------------------------------------------------------------
+> # above the median
+> #-------------------------------------------------------------------------------
+> 
+> # Estimatio Result
+> ppool_syn <- multisynth(per_treecover ~ post_ror_data_entry, 
++                         vill_id, year, df2_above, time_cohort = TRUE, n_leads = 9 )
+Error in unit_eff[[j]] : subscript out of bounds
+Calls: multisynth -> multisynth_formatted -> fit_feff -> lapply -> FUN
+In addition: Warning messages:
+1: There was 1 warning in `summarise()`.
+ℹ In argument: `t_int = max(trt_time)`.
+Caused by warning in `max()`:
+! no non-missing arguments to max; returning -Inf 
+2: In max(apply(1 - wide$mask, 1, sum, na.rm = T)) :
+  no non-missing arguments to max; returning -Inf
+3: In max(apply(1 - wide$mask, 1, sum, na.rm = T)) :
+  no non-missing arguments to max; returning -Inf
+Execution halted

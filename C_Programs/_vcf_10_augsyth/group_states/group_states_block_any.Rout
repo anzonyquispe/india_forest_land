@@ -1,0 +1,373 @@
+
+R version 4.3.1 (2023-06-16) -- "Beagle Scouts"
+Copyright (C) 2023 The R Foundation for Statistical Computing
+Platform: x86_64-redhat-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(augsynth)
+> library(data.table)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+> library(ggplot2)
+> library(fixest)
+> 
+> 
+> # Getting the workign directory 
+> shell_root <- "/scratch/gpfs/ar8787/groupdata2/india_forest_land" 
+> dbox_root <- "~/Dropbox/india_forest_land" 
+> root <- shell_root
+> setwd( root )
+> 
+> # Import data
+> df1 <- fread( "A_MicroData/data_sysdif_block_lvl.csv" )
+> names(df1)
+ [1] "state_id"                      "district_id"                  
+ [3] "subdist_id"                    "year"                         
+ [5] "post_ror_data_entry_block_any" "n_vil_notr"                   
+ [7] "n_vil_tr"                      "total_vill"                   
+ [9] "prop_vill_tr"                  "post_ror_data_entry_block_50" 
+[11] "treecover"                     "area"                         
+[13] "per_treecover"                 "block_id"                     
+> 
+> # Generation of t2event
+> # Create a data.table with minimum year by block_id
+> min_years_data <- df1[
++   post_ror_data_entry_block_any == 1,
++   .(min_year = min(year)), # Replace 'year_column' with your actual year column name
++   by = .(block_id)
++ ]
+> 
+> # Merge the min_years_data back to the original dataset
+> df1 <- merge(df1, min_years_data, by = "block_id", all.x = TRUE)
+> df1$t2ev_ror_data_entry_block_any <- df1$year - df1$min_year
+> 
+> 
+> # Union territories except delhi
+> # Ladakh
+> # Jammu & Kashmir
+> # Puducherry
+> # Lakshadweep
+> # Chandigarh
+> # Dadra and Nagar Haveli and Daman & Diu
+> # Andaman and Nicobar Islands
+> 
+> unioncat <- c(1, 34, 31, 4, 26, 35 )
+> df2_union <- df1 %>% 
++   filter(state_id %in% unioncat )
+> 
+> 
+> # "northeastern states (except Assam)
+> # Arunachal Pradesh, Manipur, Meghalaya, Mizoram, Nagaland, Sikkim, Tripura.
+> 
+> north_st <- c(12, 14, 17, 15, 13, 11, 16)
+> 
+> df2_north <- df1 %>% 
++   filter(state_id %in% north_st )
+> 
+> # rest of states
+> `%nin%` = Negate(`%in%`)
+> df2_rest <- df1 %>% 
++   filter(state_id %nin% unioncat ) %>% 
++   filter(state_id %nin% north_st )
+> 
+> #-------------------------------------------------------------------------------
+> # Union territories except delhi
+> #-------------------------------------------------------------------------------
+> 
+> result <- tryCatch({
++   
++   # Estimatio Result
++   ppool_syn <- multisynth(per_treecover ~ post_ror_data_entry_block_any, 
++                           block_id, year, df2_union )
++   
++   filename <- paste0( "union_states_any_block.RDS")
++   path <- file.path("E_Estimates/_vcf_10_augsyth/group_states", filename)
++   saveRDS( ppool_syn, path )
++   
++   
++   # Get Summary result
++   ppool_syn_time_summ <- summary( ppool_syn )
++   filename <- paste0( "union_states_sum_any_block.RDS" )
++   path <- file.path("E_Estimates/_vcf_10_augsyth/group_states", filename)
++   saveRDS( ppool_syn_time_summ,  path )
++   
++   
++   # Get the plot
++   est_df <- ppool_syn_time_summ$att
++   est_df <- est_df[est_df$Level == "Average", ]
++   est_df <- est_df[apply(!is.na(est_df), 1, all),]
++   
++   
++   n_df <- df2_union[t2ev_ror_data_entry_block_any %in% est_df$Time][, .N, by = t2ev_ror_data_entry_block_any]
++   n_df$Time <- n_df$t2ev_ror_data_entry_block_any
++   setorder(n_df,Time )
++   setorder(est_df,Time )
++   
++   
++   
++   # Getting factors
++   rect.length <- (max(est_df[,"Estimate"], na.rm = TRUE) - 
++                     min(est_df[,"Estimate"], na.rm = TRUE))/2
++   scale_fac <- 0.8 * rect.length / ( max(n_df[,"N"]) )
++   min_y_lim <- round(min(est_df$lower_bound), 2) * 1.05
++   max_y_lim <- round( max(est_df$upper_bound), 2) * 0.95
++   
++   est_df[,"xmin"] <- est_df[,"Time"] - 0.2
++   est_df[,"xmax"] <- est_df[,"Time"] + 0.2
++   est_df[,"ymin"] <- min_y_lim
++   est_df[,"ymax"] <- est_df[,"ymin"] + ( n_df[,"N"] * scale_fac )
++   
++   
++   # Getting the plot
++   p <- ggplot(est_df, aes(x = Time, y = Estimate)) + 
++     geom_line(color = "black") +
++     geom_point(color = "blue") +
++     geom_errorbar(aes(ymin = lower_bound, ymax = upper_bound), 
++                   width = 0.2, color = "red") +
++     geom_rect(data = est_df, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), 
++               fill = "grey70", colour = "grey69", alpha = 0.4, size = 0.2) + 
++     coord_cartesian(ylim = c( min_y_lim, max_y_lim ) ) +
++     scale_y_continuous(name = "Estimate", 
++                        sec.axis = sec_axis(~(.+ (-1*min_y_lim)) * (1/scale_fac), 
++                                            name = "Number of Observations")) + 
++     labs(y = "ATT", x = "Time to Event", title = "Ror Data Entry at Block Level if Any Village is Treated") + 
++     geom_vline(aes(xintercept = 0), linetype = "dashed", color = "gray") +  # Dashed vertical line at x = 5
++     geom_hline(aes(yintercept = 0), linetype = "dashed", color = "gray") + 
++     ggtitle( "Union Territories (Except Delhi)" ) +
++     theme_minimal()
++   
++   
++   filename <- paste0( "union_states_plot_any_block.png")
++   path <- file.path("F_Figures/_vcf_10_augsyth/group_states", filename)
++   ggsave(filename = path, plot = p, width = 6, height = 4, dpi = 300)
++   
++ }, error = function(err) {
++   
++   # Code to handle the error
++   # You can access information about the error in 'err'
++   cat("An error occurred:", conditionMessage(err), "\n")
++   
++   return( 'NA')
++ })
+Warning message:
+Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead. 
+> print(result)
+[1] "F_Figures/_vcf_10_augsyth/group_states/union_states_plot_any_block.png"
+> 
+> 
+> 
+> 
+> 
+> #-------------------------------------------------------------------------------
+> # north the median
+> #-------------------------------------------------------------------------------
+> 
+> 
+> 
+> result <- tryCatch({
++   
++   
++   # Estimatio Result
++   ppool_syn <- multisynth(per_treecover ~ post_ror_data_entry_block_any, 
++                           block_id, year, df2_north, time_cohort = TRUE, n_leads = 9 )
++   
++   filename <- paste0( "north_states_any_block.RDS")
++   path <- file.path("E_Estimates/_vcf_10_augsyth/group_states", filename)
++   saveRDS( ppool_syn, path )
++   
++   
++   # Get Summary result
++   ppool_syn_time_summ <- summary( ppool_syn )
++   filename <- paste0( "north_states_sum_any_block.RDS")
++   path <- file.path("E_Estimates/_vcf_10_augsyth/group_states", filename)
++   saveRDS( ppool_syn_time_summ,  path )
++   
++   
++   
++   
++   # Get the plot
++   est_df <- ppool_syn_time_summ$att
++   est_df <- est_df[est_df$Level == "Average", ]
++   est_df <- est_df[apply(!is.na(est_df), 1, all),]
++   
++   
++   n_df <- df2_north[t2ev_ror_data_entry_block_any %in% est_df$Time][, .N, by = t2ev_ror_data_entry_block_any]
++   n_df$Time <- n_df$t2ev_ror_data_entry_block_any
++   setorder(n_df,Time )
++   setorder(est_df,Time )
++   
++   
++   
++   # Getting factors
++   rect.length <- (max(est_df[,"Estimate"], na.rm = TRUE) - 
++                     min(est_df[,"Estimate"], na.rm = TRUE))/2
++   scale_fac <- 0.8 * rect.length / ( max(n_df[,"N"]) )
++   min_y_lim <- round(min(est_df$lower_bound), 2) * 1.05
++   max_y_lim <- round( max(est_df$upper_bound), 2) * 0.95
++   
++   est_df[,"xmin"] <- est_df[,"Time"] - 0.2
++   est_df[,"xmax"] <- est_df[,"Time"] + 0.2
++   est_df[,"ymin"] <- min_y_lim
++   est_df[,"ymax"] <- est_df[,"ymin"] + ( n_df[,"N"] * scale_fac )
++   
++   
++   # Getting the plot
++   p <- ggplot(est_df, aes(x = Time, y = Estimate)) + 
++     geom_line(color = "black") +
++     geom_point(color = "blue") +
++     geom_errorbar(aes(ymin = lower_bound, ymax = upper_bound), 
++                   width = 0.2, color = "red") +
++     geom_rect(data = est_df, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), 
++               fill = "grey70", colour = "grey69", alpha = 0.4, size = 0.2) + 
++     coord_cartesian(ylim = c( min_y_lim, max_y_lim ) ) +
++     scale_y_continuous(name = "Estimate", 
++                        sec.axis = sec_axis(~(.+ (-1*min_y_lim)) * (1/scale_fac), 
++                                            name = "Number of Observations")) + 
++     labs(y = "ATT", x = "Time to Event", title = "Ror Data Entry at Block Level if Any Village is Treated") + 
++     geom_vline(aes(xintercept = 0), linetype = "dashed", color = "gray") +  # Dashed vertical line at x = 5
++     geom_hline(aes(yintercept = 0), linetype = "dashed", color = "gray") + 
++     ggtitle( "Northeastern States (Except Assam)" ) +
++     theme_minimal()
++   
++   
++   filename <- paste0( "north_states_plot_any_block.png")
++   path <- file.path("F_Figures/_vcf_10_augsyth/group_states", filename)
++   ggsave(filename = path, plot = p, width = 6, height = 4, dpi = 300)
++   
++   
++   
++ }, error = function(err) {
++   # Code to handle the error
++   # You can access information about the error in 'err'
++   cat("An error occurred:", conditionMessage(err), "\n")
++   
++   # Optionally, return a default or custom value
++   return( "NA")
++ })
+> 
+> 
+> print(result)
+[1] "F_Figures/_vcf_10_augsyth/group_states/north_states_plot_any_block.png"
+> 
+> 
+> 
+> 
+> #-------------------------------------------------------------------------------
+> #  The rest of the States
+> #-------------------------------------------------------------------------------
+> 
+> result <- tryCatch({
++   
++   
++   # Estimatio Result
++   ppool_syn <- multisynth(per_treecover ~ post_ror_data_entry_block_any, 
++                           block_id, year, df2_rest, time_cohort = TRUE, n_leads = 9 )
++   
++   filename <- paste0( "rest_states_any_block.RDS")
++   path <- file.path("E_Estimates/_vcf_10_augsyth/group_states", filename)
++   saveRDS( ppool_syn, path )
++   
++   
++   # Get Summary result
++   ppool_syn_time_summ <- summary( ppool_syn )
++   filename <- paste0( "rest_states_sum_any_block.RDS")
++   path <- file.path("E_Estimates/_vcf_10_augsyth/group_states", filename)
++   saveRDS( ppool_syn_time_summ,  path )
++   
++   
++   # Get the plot
++   est_df <- ppool_syn_time_summ$att
++   est_df <- est_df[est_df$Level == "Average", ]
++   est_df <- est_df[apply(!is.na(est_df), 1, all),]
++   
++   
++   n_df <- df2_rest[t2ev_ror_data_entry_block_any %in% est_df$Time][, .N, by = t2ev_ror_data_entry_block_any]
++   n_df$Time <- n_df$t2ev_ror_data_entry_block_any
++   setorder(n_df,Time )
++   setorder(est_df,Time )
++   
++   
++   
++   # Getting factors
++   rect.length <- (max(est_df[,"Estimate"], na.rm = TRUE) - 
++                     min(est_df[,"Estimate"], na.rm = TRUE))/2
++   scale_fac <- 0.8 * rect.length / ( max(n_df[,"N"]) )
++   min_y_lim <- round(min(est_df$lower_bound), 2) * 1.05
++   max_y_lim <- round( max(est_df$upper_bound), 2) * 0.95
++   
++   est_df[,"xmin"] <- est_df[,"Time"] - 0.2
++   est_df[,"xmax"] <- est_df[,"Time"] + 0.2
++   est_df[,"ymin"] <- min_y_lim
++   est_df[,"ymax"] <- est_df[,"ymin"] + ( n_df[,"N"] * scale_fac )
++   
++   
++   # Getting the plot
++   p <- ggplot(est_df, aes(x = Time, y = Estimate)) + 
++     geom_line(color = "black") +
++     geom_point(color = "blue") +
++     geom_errorbar(aes(ymin = lower_bound, ymax = upper_bound), 
++                   width = 0.2, color = "red") +
++     geom_rect(data = est_df, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), 
++               fill = "grey70", colour = "grey69", alpha = 0.4, size = 0.2) + 
++     coord_cartesian(ylim = c( min_y_lim, max_y_lim ) ) +
++     scale_y_continuous(name = "Estimate", 
++                        sec.axis = sec_axis(~(.+ (-1*min_y_lim)) * (1/scale_fac), 
++                                            name = "Number of Observations")) + 
++     labs(y = "ATT", x = "Time to Event", title = "Ror Data Entry at Block Level if Any Village is Treated") + 
++     geom_vline(aes(xintercept = 0), linetype = "dashed", color = "gray") +  # Dashed vertical line at x = 5
++     geom_hline(aes(yintercept = 0), linetype = "dashed", color = "gray") + 
++     ggtitle( "Rest of States" ) +
++     theme_minimal()
++   
++   
++   filename <- paste0( "rest_states_plot_any_block.png")
++   path <- file.path("F_Figures/_vcf_10_augsyth/group_states", filename)
++   ggsave(filename = path, plot = p, width = 6, height = 4, dpi = 300)
++   
++   
++   
++ }, error = function(err) {
++   # Code to handle the error
++   # You can access information about the error in 'err'
++   cat("An error occurred:", conditionMessage(err), "\n")
++   
++   # Optionally, return a default or custom value
++   return( "NA")
++ })
+> 
+> 
+> print(result)
+[1] "F_Figures/_vcf_10_augsyth/group_states/rest_states_plot_any_block.png"
+> 
+> 
+> proc.time()
+   user  system elapsed 
+479.190  11.250 493.928 

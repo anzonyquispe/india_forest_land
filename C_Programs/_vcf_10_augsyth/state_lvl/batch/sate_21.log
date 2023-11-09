@@ -1,0 +1,2 @@
+/usr/lib64/R/bin/BATCH: line 60: 1501142 Killed                  ${R_HOME}/bin/R -f ${in} ${opts} ${R_BATCH_OPTIONS} > ${out} 2>&1
+slurmstepd: error: Detected 1 oom_kill event in StepId=51078228.batch. Some of the step tasks have been OOM Killed.
